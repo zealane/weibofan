@@ -5,7 +5,8 @@ import json
 import os
 import subprocess
 import sys
-
+import time
+import csv
 import requests
 
 
@@ -72,46 +73,84 @@ def write_data(uid, fan_id, name, province, city, location, type):
         f.write('%s\t%s\t%s\t%s\t%s\t\n' % (fan_id, name, province, city, location))
 
 
-if __name__ == '__main__':
-    # 获取用户输入参数
-    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-    cookie = input('请输入cookie,输入完成后回车:')
-    print('操作选项：\n--------\n0:获取粉丝\n1:获取关注者\n--------\n')
+def write_tocsv(row_str):
+    with open ("fans.csv", "w", newline='') as csvfile:
+        writer = csv.writer (csvfile)
+        writer.writerows (row_str)
+        #    f_fan.write(row_str)
+        #    f_fan.write("\n")
+    csvfile.close ()
 
-    type = input('请输入数字选项：')
-    try:
-        type = int(type)
-    except:
-        print('请输入单个数字：0或1')
-        input('')
-        sys.exit(1)
+def get_appionted_fans(uid, cookie):
+    type = 0
+    init_info = get_fans (uid, 1, type, cookie)
 
-    uid = '2671109275'
-
-    #计算对应类型的分页
-    init_info = get_fans(uid, 1, type, cookie)
-    if type != 0:
-        display_total_number = init_info["total_number"]
-        print('关注数：%s' % display_total_number)
+    if init_info["ok"] == 0:  # 如果无法获得粉丝列表，则返回0
+        display_total_number = 0
     else:
         display_total_number = init_info["display_total_number"]
-        print('粉丝数：%s' % display_total_number)
+    print ('%s的粉丝数：%s'%uid % display_total_number)
     page_nums = display_total_number // 20
-    print('分页数：%s' % page_nums)
+    if (page_nums > NP):
+        page_nums = NP
+    print ('分页数：%s' % page_nums)
 
     # 开始遍历，如果只想获取部分，可直接修改display_total_number为对应数值
-    for i in range(1, display_total_number):
-        print('第【%s】页' % i)
-        fans_list = get_fans(uid, i, type, cookie)['users']
+    for i in range (1, page_nums):
+        print ('第【%s】页' % i)
+        fans_list = get_fans (uid, i, type, cookie)['users']
         for fan in fans_list:
             fan_id = fan['id']
             name = fan['name']
-            province = fan['province']
-            city = fan['city']
-            location = fan['location']
-            write_data(uid, fan_id, name, province, city, location, type)
+            str = [uid, fan['id'], fan['name']]
+
+            row_str.append (str)
+        time.sleep (0.2)
+        # write_data(uid, fan_id, name, province, city, location, type)
+
+    type = 1  # 关注者
+    for k in range (0, NP):
+        uid = row_str[k][1]
+        print ("##########【%s】#################" % k)
+
+        # 计算对应类型的分页
+        init_info = get_fans (uid, 1, type, cookie)
+        if init_info["ok"] == 0:
+            display_total_number = 0
+        else:
+            display_total_number = init_info["total_number"]
+        print ('关注数：%s' % display_total_number)
+
+        page_nums = display_total_number // 20
+        if (page_nums > NP):
+            page_nums = NP
+        print ('分页数：%s' % page_nums)
+
+        # 开始遍历，如果只想获取部分，可直接修改page_nums为对应数值
+        for i in range (1, page_nums):
+            print ('第【%s】页' % i)
+            fans_list = get_fans (uid, i, type, cookie)['users']
+            for fan in fans_list:
+                str = [uid, fan['id'], fan['name']]
+                row_str_fan.append (str)
+            time.sleep (0.2)
+        write_tocsv(row_str_fan)
+
+if __name__ == '__main__':
+    NP = 20
+    row_str = []        # 大V的粉丝
+    row_str_fan = []    # 粉丝的关注对象
+    # 获取用户输入参数
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    ck = input('请输入cookie,输入完成后回车:')
+
+    uid = '1647486362'
+    get_appionted_fans(uid, ck)
+    uid = '7454177482'
+    get_appionted_fans (uid, ck)
+
 
     # 打开输出目录
-    subprocess.Popen(
-        r'explorer "%s"' % (os.path.join(BASE_DIR, 'data')))
-    input('\n\n运行结束,正在打开输出目录...')
+    # subprocess.Popen(
+    #     r'explorer "%s"' % (os.path.join(BASE_DIR, 'data')))
+    # input('\n\n运行结束,正在打开输出目录...')
